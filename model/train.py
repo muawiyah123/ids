@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import joblib
 
-from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -29,6 +28,8 @@ except ImportError:
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
+
+from ids_common import InfinityAndOutlierSanitizer
 
 SEED = 42
 random.seed(SEED)
@@ -49,28 +50,6 @@ LEAKY_FEATURES = ["Destination Port"]
 # they get folded into train only, never into val/test, so they don't
 # silently break the split or produce a meaningless single-sample recall.
 MIN_ROWS_PER_CLASS_FOR_SPLIT = 20
-
-
-# --------------------------------------------------------------------------
-# Sanitize Inf -> NaN and clip extreme outliers. Lives INSIDE the saved
-# pipeline so a live feature extractor's stray Inf/absurd value can't crash
-# or silently corrupt predictions.
-# --------------------------------------------------------------------------
-class InfinityAndOutlierSanitizer(BaseEstimator, TransformerMixin):
-    def __init__(self, clip_quantile: float = 0.999):
-        self.clip_quantile = clip_quantile
-
-    def fit(self, X: pd.DataFrame, y=None):
-        X = X.replace([np.inf, -np.inf], np.nan)
-        self.upper_bounds_ = X.quantile(self.clip_quantile)
-        self.lower_bounds_ = X.quantile(1 - self.clip_quantile)
-        return self
-
-    def transform(self, X: pd.DataFrame):
-        X = X.copy()
-        X = X.replace([np.inf, -np.inf], np.nan)
-        X = X.clip(lower=self.lower_bounds_, upper=self.upper_bounds_, axis=1)
-        return X
 
 
 # --------------------------------------------------------------------------
