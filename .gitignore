@@ -45,3 +45,5 @@ logs/
 # Environment variables
 .env
 *.env
+
+/model/trainData

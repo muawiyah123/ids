@@ -1,0 +1,203 @@
+{
+  "run_id": "20260813_134429",
+  "mode": "multiclass",
+  "feature_names_in_order": [
+    "Destination Port",
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Length of Fwd Packets",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Min",
+    "Bwd IAT Total",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "Fwd PSH Flags",
+    "Fwd URG Flags",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Bwd Packets/s",
+    "Min Packet Length",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Variance",
+    "FIN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "Down/Up Ratio",
+    "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Std"
+  ],
+  "dropped_correlated_features": [
+    "Total Backward Packets",
+    "Total Length of Bwd Packets",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Fwd IAT Total",
+    "Fwd IAT Max",
+    "Fwd Packets/s",
+    "Packet Length Std",
+    "SYN Flag Count",
+    "CWE Flag Count",
+    "ECE Flag Count",
+    "Average Packet Size",
+    "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size",
+    "Fwd Header Length.1",
+    "Subflow Fwd Packets",
+    "Subflow Fwd Bytes",
+    "Subflow Bwd Packets",
+    "Subflow Bwd Bytes",
+    "Idle Mean",
+    "Idle Max",
+    "Idle Min"
+  ],
+  "dropped_leaky_features": [],
+  "classes": [
+    "BENIGN",
+    "Bot",
+    "DDoS",
+    "DoS GoldenEye",
+    "DoS Hulk",
+    "DoS Slowhttptest",
+    "DoS slowloris",
+    "FTP-Patator",
+    "Heartbleed",
+    "Infiltration",
+    "PortScan",
+    "SSH-Patator",
+    "Web Attack \u00ef\u00bf\u00bd Brute Force",
+    "Web Attack \u00ef\u00bf\u00bd Sql Injection",
+    "Web Attack \u00ef\u00bf\u00bd XSS"
+  ],
+  "rare_classes_train_only": [
+    "Heartbleed"
+  ],
+  "macro_f1_test": 0.8916070988900725,
+  "weighted_f1_test": 0.9986524099823325,
+  "classification_report_test": {
+    "BENIGN": {
+      "precision": 0.9999745305665039,
+      "recall": 0.9987948090933085,
+      "f1-score": 0.9993843216799905,
+      "support": 314473.0
+    },
+    "Bot": {
+      "precision": 0.6651480637813212,
+      "recall": 0.9965870307167235,
+      "f1-score": 0.7978142076502732,
+      "support": 293.0
+    },
+    "DDoS": {
+      "precision": 0.9992714404662781,
+      "recall": 0.9999479248034161,
+      "f1-score": 0.9996095681824098,
+      "support": 19203.0
+    },
+    "DoS GoldenEye": {
+      "precision": 0.9859335038363172,
+      "recall": 0.9993519118600129,
+      "f1-score": 0.9925973607981976,
+      "support": 1543.0
+    },
+    "DoS Hulk": {
+      "precision": 0.9980356661402765,
+      "recall": 0.9994214525398234,
+      "f1-score": 0.9987280786278666,
+      "support": 25927.0
+    },
+    "DoS Slowhttptest": {
+      "precision": 0.9786163522012579,
+      "recall": 0.9923469387755102,
+      "f1-score": 0.9854338188727042,
+      "support": 784.0
+    },
+    "DoS slowloris": {
+      "precision": 0.9938118811881188,
+      "recall": 0.9950433705080545,
+      "f1-score": 0.9944272445820433,
+      "support": 807.0
+    },
+    "FTP-Patator": {
+      "precision": 1.0,
+      "recall": 0.998876404494382,
+      "f1-score": 0.9994378864530635,
+      "support": 890.0
+    },
+    "Infiltration": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 6.0
+    },
+    "PortScan": {
+      "precision": 0.9896052918514211,
+      "recall": 0.9993393525655142,
+      "f1-score": 0.9944485025566107,
+      "support": 13623.0
+    },
+    "SSH-Patator": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 483.0
+    },
+    "Web Attack \u00ef\u00bf\u00bd Brute Force": {
+      "precision": 0.7377777777777778,
+      "recall": 0.751131221719457,
+      "f1-score": 0.7443946188340808,
+      "support": 221.0
+    },
+    "Web Attack \u00ef\u00bf\u00bd Sql Injection": {
+      "precision": 0.375,
+      "recall": 1.0,
+      "f1-score": 0.5454545454545454,
+      "support": 3.0
+    },
+    "Web Attack \u00ef\u00bf\u00bd XSS": {
+      "precision": 0.42857142857142855,
+      "recall": 0.4329896907216495,
+      "f1-score": 0.4307692307692308,
+      "support": 97.0
+    },
+    "accuracy": 0.9986071208633207,
+    "macro avg": {
+      "precision": 0.8679818525986215,
+      "recall": 0.9402735791284179,
+      "f1-score": 0.8916070988900725,
+      "support": 378353.0
+    },
+    "weighted avg": {
+      "precision": 0.9987541637936987,
+      "recall": 0.9986071208633207,
+      "f1-score": 0.9986524099823325,
+      "support": 378353.0
+    }
+  },
+  "model_type": "xgboost",
+  "scaling_used": false,
+  "seed": 42
+}
