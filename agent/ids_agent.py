@@ -49,7 +49,7 @@ import argparse
 import asyncio
 import json
 import logging
-import queue
+import os
 import statistics
 import threading
 import time
@@ -508,17 +508,30 @@ def main():
     parser.add_argument("--interval", type=float, default=30.0, help="Reporting interval in seconds (default 30)")
     parser.add_argument("--server-url", default=None, help="ML server ingest endpoint, e.g. http://localhost:8000/ingest")
     parser.add_argument("--dry-run", action="store_true", help="Force dry-run mode even if --server-url is set")
-    parser.add_argument("--out-file", default="flows_log.jsonl", help="Local JSONL log file for dry-run / fallback")
+    parser.add_argument("--out-file", default=None,
+                         help="Local JSONL log file for dry-run / fallback. If omitted, a fresh "
+                              "timestamped file (flows_YYYYMMDD_HHMMSS.jsonl) is created automatically "
+                              "for every run, so each session gets its own report.")
+    parser.add_argument("--out-dir", default=".",
+                         help="Directory the auto-timestamped file is created in (ignored if --out-file is set). "
+                              "Must already exist. Default: current directory.")
     parser.add_argument("--report-active", action="store_true",
                          help="Also report still-active (not yet timed out) flows every cycle, "
                               "not just flows that ended. Useful for fast testing.")
     args = parser.parse_args()
 
+    if args.out_file:
+        out_file = args.out_file
+    else:
+        run_timestamp = time.strftime("%Y%m%d_%H%M%S")
+        out_file = os.path.join(args.out_dir, f"flows_{run_timestamp}.jsonl")
+
     server_url = None if args.dry_run else args.server_url
     if server_url:
         log.info("Mode: LIVE -> POSTing flow records to %s every %.0fs", server_url, args.interval)
+        log.info("(Failed sends also fall back to local file: %s)", out_file)
     else:
-        log.info("Mode: DRY-RUN -> printing + logging flow records to %s every %.0fs", args.out_file, args.interval)
+        log.info("Mode: DRY-RUN -> printing + logging flow records to %s every %.0fs", out_file, args.interval)
 
     flow_table = FlowTable()
     stop_event = threading.Event()
@@ -535,7 +548,7 @@ def main():
             flow_table=flow_table,
             interval=args.interval,
             server_url=server_url,
-            dry_run_file=args.out_file,
+            dry_run_file=out_file,
             report_active_flows=args.report_active,
         ))
     except KeyboardInterrupt:
