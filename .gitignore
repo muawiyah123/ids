@@ -36,14 +36,21 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+
 # Logs & captures
 *.pcap
 *.pcapng
 *.log
+*.jsonl
 logs/
 
 # Environment variables
 .env
 *.env
+!.env.example
 
 /model/trainData

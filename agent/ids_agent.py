@@ -423,10 +423,24 @@ def compute_features(flow: Flow) -> dict:
 # --------------------------------------------------------------------------
 
 async def send_record(record: dict, server_url: Optional[str], dry_run_file: str,
-                       session: Optional["aiohttp.ClientSession"]):
+                       session: Optional["aiohttp.ClientSession"], token: Optional[str] = None):
     if server_url and session is not None:
+        # If posting to backend events API, format into AgentEvent schema
+        if "/events" in server_url:
+            payload = {
+                "features": record,
+                "destination_port": int(record.get("Destination Port", 0)),
+                "protocol": "TCP" if record.get("Destination Port") else None,
+            }
+        else:
+            payload = record
+
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+
         try:
-            async with session.post(server_url, json=record, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            async with session.post(server_url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status >= 300:
                     body = await resp.text()
                     log.warning("Server rejected record (HTTP %s): %s", resp.status, body[:300])
@@ -471,7 +485,7 @@ def start_sniffer(iface: Optional[str], flow_table: FlowTable, bpf_filter: str, 
 # --------------------------------------------------------------------------
 
 async def reporter_loop(flow_table: FlowTable, interval: float, server_url: Optional[str],
-                         dry_run_file: str, report_active_flows: bool):
+                         dry_run_file: str, report_active_flows: bool, token: Optional[str] = None):
     session = None
     if server_url:
         if aiohttp is None:
@@ -489,7 +503,7 @@ async def reporter_loop(flow_table: FlowTable, interval: float, server_url: Opti
             tasks = []
             for flow in flows:
                 record = compute_features(flow)
-                tasks.append(asyncio.create_task(send_record(record, server_url, dry_run_file, session)))
+                tasks.append(asyncio.create_task(send_record(record, server_url, dry_run_file, session, token=token)))
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
     finally:
@@ -506,7 +520,8 @@ def main():
     parser.add_argument("--iface", default=None, help="Network interface to sniff on (default: scapy default)")
     parser.add_argument("--filter", default="tcp or udp", help="BPF capture filter")
     parser.add_argument("--interval", type=float, default=30.0, help="Reporting interval in seconds (default 30)")
-    parser.add_argument("--server-url", default=None, help="ML server ingest endpoint, e.g. http://localhost:8000/ingest")
+    parser.add_argument("--server-url", "--url", dest="server_url", default=None, help="ML server ingest endpoint, e.g. http://localhost:8000/api/v1/events")
+    parser.add_argument("--token", "--api-key", dest="token", default=None, help="Agent API token for authentication")
     parser.add_argument("--dry-run", action="store_true", help="Force dry-run mode even if --server-url is set")
     parser.add_argument("--out-file", default=None,
                          help="Local JSONL log file for dry-run / fallback. If omitted, a fresh "
@@ -550,6 +565,7 @@ def main():
             server_url=server_url,
             dry_run_file=out_file,
             report_active_flows=args.report_active,
+            token=args.token,
         ))
     except KeyboardInterrupt:
         log.info("Shutting down...")

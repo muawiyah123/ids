@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-sentinel-bg text-sentinel-text font-sans antialiased;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-sentinel-surface;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-sentinel-muted rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-sentinel-border;
+  }
+}
+
+@layer components {
+  /* Card component */
+  .card {
+    @apply bg-sentinel-surface border border-sentinel-border rounded-xl;
+  }
+
+  /* Input component */
+  .input {
+    @apply bg-sentinel-panel border border-sentinel-border rounded-lg px-3 py-2 
+           text-sentinel-text placeholder-sentinel-subtle text-sm
+           focus:outline-none focus:ring-2 focus:ring-sentinel-accent focus:border-transparent
+           transition-colors;
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply bg-sentinel-accent hover:bg-sentinel-accent-dim text-white font-medium 
+           px-4 py-2 rounded-lg transition-colors text-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-sentinel-panel hover:bg-sentinel-muted text-sentinel-text border border-sentinel-border
+           font-medium px-4 py-2 rounded-lg transition-colors text-sm;
+  }
+
+  .btn-danger {
+    @apply bg-threat-critical/20 hover:bg-threat-critical/30 text-threat-critical border border-threat-critical/30
+           font-medium px-4 py-2 rounded-lg transition-colors text-sm;
+  }
+
+  /* Status indicator dot */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  /* IP address display */
+  .ip-address {
+    @apply font-mono text-sm;
+  }
+}
+
+/* Severity badge colours */
+.severity-CRITICAL { @apply bg-threat-critical/20 text-threat-critical border border-threat-critical/30; }
+.severity-HIGH     { @apply bg-threat-high/20 text-threat-high border border-threat-high/30; }
+.severity-MEDIUM   { @apply bg-threat-medium/20 text-threat-medium border border-threat-medium/30; }
+.severity-LOW      { @apply bg-threat-low/20 text-threat-low border border-threat-low/30; }
+.severity-INFO     { @apply bg-threat-info/20 text-threat-info border border-threat-info/30; }
+
+/* Threat level colours */
+.threat-CRITICAL { @apply text-threat-critical; }
+.threat-HIGH     { @apply text-threat-high; }
+.threat-ELEVATED { @apply text-threat-medium; }
+.threat-NORMAL   { @apply text-threat-info; }
+
+/* Animated new row highlight for live feeds */
+@keyframes rowFadeIn {
+  0% { background-color: rgba(59, 130, 246, 0.1); }
+  100% { background-color: transparent; }
+}
+.row-new {
+  animation: rowFadeIn 2s ease-out;
+}
