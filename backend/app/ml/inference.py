@@ -48,8 +48,8 @@ class InferenceService:
             FeatureValidationError: if input is fundamentally invalid.
             RuntimeError: if model is not ready.
         """
-        if not raw_features or not isinstance(raw_features, dict):
-            raise FeatureValidationError("features must be a non-empty dict")
+        if not isinstance(raw_features, dict):
+            raise FeatureValidationError("features must be an object")
 
         expected = model_manager.feature_names
         if not expected:

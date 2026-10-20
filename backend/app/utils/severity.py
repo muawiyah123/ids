@@ -22,6 +22,7 @@ CLASS_SEVERITY_MAP: dict[str, DetectionSeverity] = {
     "BENIGN": DetectionSeverity.INFO,
     "Bot": DetectionSeverity.CRITICAL,
     "DDoS": DetectionSeverity.CRITICAL,
+    "DoS": DetectionSeverity.HIGH,
     "DoS GoldenEye": DetectionSeverity.HIGH,
     "DoS Hulk": DetectionSeverity.HIGH,
     "DoS Slowhttptest": DetectionSeverity.HIGH,

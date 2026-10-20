@@ -21,6 +21,7 @@ const WS_BASE = import.meta.env.VITE_WS_URL
 let _accessToken: string | null = null;
 let _refreshToken: string | null = null;
 let _onUnauthorized: (() => void) | null = null;
+let _refreshPromise: Promise<string> | null = null;
 
 export function setTokens(access: string, refresh: string) {
   _accessToken = access;
@@ -64,7 +65,31 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const original = error.config;
+    if (
+      error.response?.status === 401 && original && _refreshToken &&
+      !original.url?.includes('/auth/refresh') && !original.url?.includes('/auth/login') &&
+      !(original as typeof original & { _retry?: boolean })._retry
+    ) {
+      (original as typeof original & { _retry?: boolean })._retry = true;
+      try {
+        if (!_refreshPromise) {
+          const refreshToken = _refreshToken;
+          _refreshPromise = api.post('/auth/refresh', { refresh_token: refreshToken })
+            .then((response) => {
+              setTokens(response.data.access_token, response.data.refresh_token);
+              return response.data.access_token as string;
+            })
+            .finally(() => { _refreshPromise = null; });
+        }
+        const accessToken = await _refreshPromise;
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return api(original);
+      } catch {
+        clearTokens();
+        _onUnauthorized?.();
+      }
+    } else if (error.response?.status === 401) {
       clearTokens();
       _onUnauthorized?.();
     }

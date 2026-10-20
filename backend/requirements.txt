@@ -8,6 +8,8 @@ uvicorn[standard]==0.30.6
 # Pydantic
 pydantic==2.9.0
 pydantic-settings==2.5.2
+email-validator==2.2.0
+python-dotenv==1.0.1
 
 # Database
 # asyncpg 0.30.0 has cp313 wheels; 0.29.0 does not
@@ -33,7 +35,7 @@ redis==5.0.8
 # XGBoost stores its model internally (not as numpy arrays), so the
 # pipeline pickle loads cleanly under numpy 2.x.
 # ---------------------------------------------------------------------------
-scikit-learn==1.5.2
+scikit-learn==1.8.0
 xgboost==2.1.1
 joblib==1.4.2
 numpy==2.1.3

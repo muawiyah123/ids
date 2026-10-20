@@ -18,6 +18,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import uuid
 from datetime import datetime, timezone
 
 
@@ -140,8 +141,10 @@ def generate_ddos_flow():
     }, dst_port, "TCP"
 
 
-def generate_portscan_flow():
-    dst_port = random.choice([21, 22, 23, 25, 53, 80, 110, 139, 443, 445, 1433, 3306, 3389, 8080])
+def generate_portscan_flow(destination_port=None):
+    dst_port = destination_port or random.choice(
+        [21, 22, 23, 25, 53, 80, 110, 139, 443, 445, 1433, 3306, 3389, 8080]
+    )
     return {
         "Destination Port": dst_port,
         "Flow Duration": random.uniform(10, 500),
@@ -177,6 +180,7 @@ def generate_portscan_flow():
         "Packet Length Variance": 0,
         "FIN Flag Count": 0,
         "RST Flag Count": 0,
+        "SYN Flag Count": 1,
         "PSH Flag Count": 0,
         "ACK Flag Count": 0,
         "URG Flag Count": 0,
@@ -340,6 +344,9 @@ def main():
         "45.33.32.156", "104.244.42.1", "172.56.21.90"
     ]
     internal_ips = ["192.168.1.10", "192.168.1.25", "192.168.1.50", "192.168.1.105"]
+    scan_source_ip = threat_ips[0]
+    scan_target_ip = internal_ips[0]
+    next_scan_port = 1
 
     try:
         while True:
@@ -359,18 +366,24 @@ def main():
                 if choice == "DDoS":
                     features, dst_port, proto = generate_ddos_flow()
                 elif choice == "PortScan":
-                    features, dst_port, proto = generate_portscan_flow()
+                    features, dst_port, proto = generate_portscan_flow(next_scan_port)
+                    src_ip = scan_source_ip
+                    dst_ip = scan_target_ip
+                    next_scan_port = 1 if next_scan_port >= 65535 else next_scan_port + 1
                 elif choice == "BruteForce":
                     features, dst_port, proto = generate_bruteforce_flow()
                 else:
                     features, dst_port, proto = generate_webattack_flow()
 
-                src_ip = random.choice(threat_ips)
-                dst_ip = random.choice(internal_ips)
+                if choice != "PortScan":
+                    src_ip = random.choice(threat_ips)
+                    dst_ip = random.choice(internal_ips)
 
             src_port = random.randint(32768, 65535)
 
             payload = {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "source_ip": src_ip,
                 "destination_ip": dst_ip,
                 "source_port": src_port,
@@ -396,10 +409,11 @@ def main():
                     prediction = res_body.get("prediction", "UNKNOWN")
                     confidence = res_body.get("confidence", 0.0)
                     severity = res_body.get("severity", "INFO")
+                    alert_id = res_body.get("alert_id")
                     now_str = datetime.now().strftime("%H:%M:%S")
 
                     tag = "[ALERT]" if severity in ("HIGH", "CRITICAL") else ("[WARN]" if severity == "MEDIUM" else "[INFO]")
-                    print(f"[{now_str}] {tag:<7} {src_ip}:{src_port} -> {dst_ip}:{dst_port} | Class: {prediction:<15} Conf: {confidence:.2f} | Sev: {severity}")
+                    print(f"[{now_str}] {tag:<7} {src_ip}:{src_port} -> {dst_ip}:{dst_port} | Class: {prediction:<15} Conf: {confidence:.2f} | Sev: {severity} | Alert: {alert_id or '-'}")
                     sent += 1
 
             except urllib.error.HTTPError as e:

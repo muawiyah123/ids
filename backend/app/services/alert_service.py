@@ -41,7 +41,11 @@ class AlertService:
         """
         from app.utils.severity import should_create_alert
 
-        if not should_create_alert(
+        rule_detected = (detection.metadata_ or {}).get("detection_rule") in {
+            "tcp_port_scan_correlation",
+            "tcp_syn_flood_rate",
+        }
+        if not rule_detected and not should_create_alert(
             detection.predicted_class,
             detection.confidence,
             threshold=settings.ALERT_CONFIDENCE_THRESHOLD,
@@ -131,6 +135,8 @@ class AlertService:
         ]
         if source_ip:
             conditions.append(Alert.source_ip == source_ip)
+        if destination_ip:
+            conditions.append(Alert.destination_ip == destination_ip)
 
         result = await self.db.execute(
             select(Alert)

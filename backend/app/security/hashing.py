@@ -13,6 +13,9 @@ from passlib.context import CryptContext
 
 # bcrypt is the recommended scheme — auto-rehash on verify if rounds change
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# A valid one-time dummy hash keeps unknown-user login attempts on the same
+# bcrypt verification path as known users without causing malformed-hash 500s.
+DUMMY_PASSWORD_HASH = pwd_context.hash(secrets.token_urlsafe(32))
 
 
 def hash_password(password: str) -> str:

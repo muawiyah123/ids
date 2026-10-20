@@ -39,139 +39,32 @@ IDS Sentinel is a **real-time network intrusion detection system**. It:
 
 ## 2. Prerequisites
 
-Make sure these are installed before starting:
-
-| Tool | Version | Check |
-|---|---|---|
-| Python | 3.10 or higher | `python --version` |
-| Node.js | 18 or higher | `node --version` |
-| PostgreSQL | 16 or higher | must be running as a service |
-
-PostgreSQL must be **running** before you start. Check in PowerShell:
-```powershell
-Get-Service -Name postgresql*
-# Status should say: Running
-```
+Install and start **Docker Desktop**. Docker Compose starts the database, API,
+and website together. Install **Npcap** once only if you want Windows to
+capture live network packets.
 
 ---
 
 ## 3. First-Time Setup
 
-> ⚠️ Do this **once only**. Skip to Section 4 on subsequent runs.
-
-### Step 1 — Create Python Virtual Environment
-
-```powershell
-cd C:\Users\Jawad Shaikh\OneDrive\Desktop\ids
-python -m venv .venv
-```
-
-### Step 2 — Install Backend Dependencies
-
-```powershell
-.venv\Scripts\activate
-cd backend
-pip install -r requirements.txt
-```
-
-### Step 3 — Create the Database
-
-Open a terminal and run (enter your postgres password when prompted):
-
-```powershell
-psql -U postgres -c "CREATE USER ids_user WITH PASSWORD 'ids_password';"
-psql -U postgres -c "CREATE DATABASE ids_sentinel OWNER ids_user;"
-psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE ids_sentinel TO ids_user;"
-```
-
-> If you see `already exists` errors — that's fine, the DB is already set up.
-
-### Step 4 — Run Database Migrations
-
-This creates all the tables in the database:
-
-```powershell
-# From: C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\backend
-Get-Content ..\.env | ForEach-Object {
-    if ($_ -match '^\s*([^#=]+?)\s*=\s*(.+)\s*$') {
-        [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2])
-    }
-}
-..\\.venv\Scripts\alembic.exe upgrade head
-```
-
-You should see:
-```
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO  [alembic.runtime.migration] Will assume transactional DDL.
-```
-
-### Step 5 — Install Frontend Dependencies
-
-```powershell
-cd C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\frontend
-npm install
-```
+No separate Python, Node.js, or PostgreSQL setup is needed for the dashboard.
+The network agent sets up its Python packages the first time you start it.
 
 ---
 
 ## 4. Starting the Project
 
-You need **two terminals** open at the same time.
+Start Docker Desktop, open PowerShell, and run these commands:
+
+    cd "C:\Users\Muawiyah\Desktop\fyp\ids"
+    docker compose up -d --build
+    docker compose ps
+
+Open **http://localhost:5173**. To check the backend and model, open
+**http://localhost:8000/ready**. On later starts, run docker compose up -d
+from the project folder.
 
 ---
-
-### Terminal 1 — Start the Backend
-
-```powershell
-cd C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\backend
-
-# Load environment variables from .env file
-Get-Content ..\.env | ForEach-Object {
-    if ($_ -match '^\s*([^#=]+?)\s*=\s*(.+)\s*$') {
-        [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2])
-    }
-}
-
-# Start the backend server
-..\\.venv\Scripts\uvicorn.exe app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-✅ Backend is ready when you see:
-```
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000
-```
-
----
-
-### Terminal 2 — Start the Frontend
-
-```powershell
-cd C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\frontend
-npm run dev
-```
-
-✅ Frontend is ready when you see:
-```
-VITE v8.x.x  ready in xxx ms
-➜  Local:   http://localhost:5173/
-```
-
----
-
-### Open the App
-
-Open your browser and go to:
-
-**👉 http://localhost:5173**
-
-The dashboard will open directly — no login required in development mode.
-
-> If the page is blank/black: press **`Ctrl + Shift + R`** to hard refresh and clear the cache.
-
----
-
 ## 5. Using the Dashboard
 
 When you open the app, you land on the **Security Dashboard**. Here's what each part means:
@@ -269,8 +162,8 @@ An "agent" is a Python script (`ids_agent.py`) running on a machine to capture n
 
 - **Register a new agent** — creates an API token for a new monitoring endpoint
 - **View agent status** — ONLINE / DEGRADED / OFFLINE based on last heartbeat
-- **See agent location** — which network interface it's monitoring
-- **Copy the API token** — needed when starting the agent on a remote machine
+- **See agent details** — hostname, status, and events sent
+- **Copy one-step start command** — sets up and starts the agent
 
 ---
 
@@ -313,71 +206,36 @@ An "agent" is a Python script (`ids_agent.py`) running on a machine to capture n
 
 ---
 
-## 7. Setting Up the Network Agent
+## 7. Starting the Network Agent
 
-The network agent is what actually **captures real network traffic** and sends it to the backend for analysis.
+The agent sends traffic from this computer to the dashboard.
 
-### Step 1 — Register an Agent in the Dashboard
+1. Start the project with the Docker commands in Section 4.
+2. In the dashboard, open **Agents** and click **Register Agent**.
+3. Enter a name and click **Register Agent**.
+4. Click **Copy One-Step Start Command**.
+5. In PowerShell, go to the project folder and paste the copied command at the normal prompt:
 
-1. Go to **Agents** page → click **"Register Agent"**
-2. Give it a name (e.g., `home-router`, `server-01`)
-3. Copy the **API Token** that appears — you'll need it in the next step
+       cd "C:\Users\Muawiyah\Desktop\fyp\ids"
 
-### Step 2 — Install Agent Dependencies
+The command prepares the agent and automatically selects active capture
+adapters. You do not need to enter an interface name. Run PowerShell as
+Administrator and install Npcap on Windows for packet capture. Keep the
+PowerShell window open while monitoring.
 
-*(Already installed in your `.venv`!)* If needed in the future:
+The agent card should change to **Online**. After network traffic, its **Events
+Sent** count should increase. Online by itself confirms only that the agent
+checked in. The agent can report only traffic visible to the computer where it
+is running.
 
-```powershell
-cd "C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\agent"
-..\.venv\Scripts\pip.exe install -r requirements.txt
-```
+For live SYN-flood monitoring, the agent raises a rule signal after it sees at
+least 200 TCP SYN packets to the same destination port within 5 seconds. The
+backend records this as a high-severity **DoS** detection. The XGBoost model
+still classifies ordinary completed flows against its 15 training labels; the
+rate rule covers this specific high-rate SYN pattern and is not a promise to
+identify every possible DoS technique.
 
-> The agent uses **Scapy** which requires **Npcap** on Windows to capture live packets.  
-> Download from: https://npcap.com/#download
-
-### Step 3 — Run the Agent
-
-**Live Mode (Sending to Backend):**
-```powershell
-cd "C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\agent"
-
-# Replace YOUR_TOKEN with the token from Step 1
-..\.venv\Scripts\python.exe ids_agent.py --url http://localhost:8000/api/v1/events --token YOUR_TOKEN --iface "Wi-Fi"
-```
-
-**Offline / Dry-Run Mode (Testing without sending to server):**
-```powershell
-cd "C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\agent"
-..\.venv\Scripts\python.exe ids_agent.py --dry-run
-```
-
-Common interface names on Windows:
-- `Wi-Fi` — wireless network adapter
-- `Ethernet` — wired connection
-- `Local Area Connection`
-
-List your available interfaces:
-```powershell
-..\.venv\Scripts\python.exe -c "from scapy.arch.windows import get_windows_if_list; [print(i['name']) for i in get_windows_if_list()]"
-```
-
-### Step 4 — Verify the Agent is Working
-
-- Go to the **Agents** page — your agent should show as **ONLINE**
-- Go to the **Live Monitor** — you should see detections appearing in real-time
-- Go to the **Dashboard** — the "Active Agents" count will update
-
-### Offline Test Script (No Root / No Npcap Required)
-
-You can also run the built-in offline test to verify feature extraction:
-
-```powershell
-cd "C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\agent"
-..\.venv\Scripts\python.exe test_offline.py
-```
-
----
-
+To stop the agent, press Ctrl+C in its PowerShell window.
 ## 8. API Access
 
 The backend exposes a full REST API.
@@ -405,36 +263,21 @@ The backend exposes a full REST API.
 
 ## 9. Quick Restart (Daily Use)
 
-After the first-time setup, just run these two commands in two terminals:
+Start Docker Desktop. In PowerShell:
 
-**Terminal 1 — Backend:**
-```powershell
-cd "C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\backend"
-Get-Content ..\.env | ForEach-Object { if ($_ -match '^\s*([^#=]+?)\s*=\s*(.+)\s*$') { [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2]) } }
-..\.venv\Scripts\uvicorn.exe app.main:app --reload --host 0.0.0.0 --port 8000
-```
+    cd "C:\Users\Muawiyah\Desktop\fyp\ids"
+    docker compose up -d
 
-**Terminal 2 — Frontend:**
-```powershell
-cd "C:\Users\Jawad Shaikh\OneDrive\Desktop\ids\frontend"
-npm run dev
-```
-
-Then open: **http://localhost:5173**
+Open http://localhost:5173. To stop the project, run docker compose down from
+the same folder. This keeps the database data.
 
 ---
-
 ## 10. Troubleshooting
 
-| Problem | Cause | Fix |
-|---|---|---|
-| `SECRET_KEY` / `DATABASE_URL` missing error | `.env` not loaded | Run the `Get-Content ..\.env \| ForEach-Object {...}` block before uvicorn |
-| `password authentication failed` | DB user doesn't exist | Run the 3 `psql` commands from Section 3 Step 3 |
-| Blank black page in browser | Stale cached JS | Press `Ctrl + Shift + R` in the browser |
-| Page stuck on `/login` | Old Vite server running | Kill all node processes: `Get-Process node \| Stop-Process -Force`, then `npm run dev` |
-| Port 5173 already in use | Old Vite still running | Same as above |
-| Agent shows OFFLINE | No heartbeat received | Make sure the agent script is running and pointing to `http://localhost:8000` |
-| No detections showing | Agent not running | Start the agent (Section 7) or the simulator |
-| `alembic` not found | Venv not activated | Run `..\\.venv\Scripts\activate` first |
-| Backend crashes on start | Missing env vars | Always load `.env` before starting uvicorn |
-| Npcap error in agent | Npcap not installed | Download from https://npcap.com/#download |
+| Problem | What to do |
+|---|---|
+| Docker says the engine is unavailable | Open Docker Desktop and wait until it says it is running. |
+| The website does not open | From the project folder run docker compose up -d, then refresh http://localhost:5173. |
+| The agent shows Offline | Start the copied one-step agent command and leave its PowerShell window open. |
+| The agent is Online but sends no events | Run PowerShell as Administrator and make sure Npcap is installed. The agent only sees traffic visible to its computer. |
+| Agent reports a packet-capture error | Repair/install Npcap, then restart the agent. |

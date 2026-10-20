@@ -12,7 +12,7 @@ from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +36,8 @@ ALLOWED_SORT_FIELDS = {
 
 
 class DetectionResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     id: str
     event_id: Optional[str]
     flow_timestamp: str

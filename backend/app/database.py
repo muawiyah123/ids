@@ -25,13 +25,17 @@ settings = get_settings()
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    pool_pre_ping=True,  # detect stale connections
-    echo=settings.DEBUG,
-)
+_engine_options = {
+    "pool_pre_ping": True,  # detect stale connections
+    "echo": settings.DEBUG,
+}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    _engine_options.update(
+        pool_size=settings.DATABASE_POOL_SIZE,
+        max_overflow=settings.DATABASE_MAX_OVERFLOW,
+    )
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_options)
 
 # ---------------------------------------------------------------------------
 # Session factory

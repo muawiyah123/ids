@@ -54,3 +54,4 @@ logs/
 !.env.example
 
 /model/trainData
+/model/data/cicids2017/*.csv

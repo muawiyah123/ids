@@ -38,6 +38,11 @@ CLASS_NAME_DISPLAY_MAP: Dict[str, str] = {
     "Web Attack \ufffd Brute Force": "Web Attack - Brute Force",
     "Web Attack \ufffd Sql Injection": "Web Attack - Sql Injection",
     "Web Attack \ufffd XSS": "Web Attack - XSS",
+    # Some training artifacts contain the UTF-8 replacement glyph after it
+    # was decoded as Latin-1/Windows-1252 (three visible characters).
+    "Web Attack ï¿½ Brute Force": "Web Attack - Brute Force",
+    "Web Attack ï¿½ Sql Injection": "Web Attack - Sql Injection",
+    "Web Attack ï¿½ XSS": "Web Attack - XSS",
 }
 
 
@@ -85,6 +90,7 @@ class ModelManager:
         Raises RuntimeError if loading fails — caller should set readiness
         to NOT_READY and log the error without leaking paths to clients.
         """
+        self._is_ready = False
         try:
             # 1. Import joblib here (not at module top) so the module is
             #    importable even if joblib isn't installed yet at import time.
@@ -133,13 +139,13 @@ class ModelManager:
             self._feature_names = self._metadata.get("feature_names_in_order", [])
             logger.info("  features (%d): %s…", len(self._feature_names), self._feature_names[:3])
 
+            if not self._feature_names or len(set(self._feature_names)) != len(self._feature_names):
+                raise ValueError("Model metadata has an empty or duplicate feature list")
+
             # 7. Sanity: metadata classes vs encoder classes (count check)
             meta_classes = self._metadata.get("classes", [])
-            if len(meta_classes) != len(self._classes_raw):
-                logger.warning(
-                    "Metadata class count (%d) != encoder class count (%d)",
-                    len(meta_classes), len(self._classes_raw),
-                )
+            if not meta_classes or meta_classes != self._classes_raw:
+                raise ValueError("Model metadata classes do not match the label encoder order")
 
             # 8. Warm-up inference with a zero-valued feature vector
             self._warm_up_inference()
@@ -165,8 +171,15 @@ class ModelManager:
             [dict.fromkeys(self._feature_names, 0.0)]
         )[self._feature_names]
         with self._inference_lock:
-            _ = self._pipeline.predict(dummy)
-        logger.info("  warm-up inference: OK")
+            probabilities = np.asarray(self._pipeline.predict_proba(dummy)[0], dtype=float)
+        if len(probabilities) != len(self._classes_raw):
+            raise ValueError(
+                f"Model returned {len(probabilities)} probabilities for "
+                f"{len(self._classes_raw)} label classes"
+            )
+        if not np.isfinite(probabilities).all() or not np.isclose(probabilities.sum(), 1.0, atol=1e-4):
+            raise ValueError("Model warm-up returned an invalid probability distribution")
+        logger.info("  warm-up probability inference: OK")
 
     # ------------------------------------------------------------------ #
     # Inference                                                            #

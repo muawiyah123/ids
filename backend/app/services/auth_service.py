@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.user import User, UserRole, RefreshToken
 from app.security.hashing import (
+    DUMMY_PASSWORD_HASH,
     hash_password,
     verify_password,
     generate_secure_token,
@@ -79,8 +80,7 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         # Always run verify to prevent timing oracle attacks
-        dummy_hash = "$2b$12$placeholder_to_prevent_timing_oracle_attack"
-        candidate_hash = user.hashed_password if user else dummy_hash
+        candidate_hash = user.hashed_password if user else DUMMY_PASSWORD_HASH
 
         if not verify_password(password, candidate_hash) or user is None:
             raise AuthenticationError("Invalid credentials")

@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Server, Plus, Copy, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Server, Plus, Copy, CheckCircle } from 'lucide-react';
 import { agentsApi } from '../services/api';
 import { AgentStatusBadge } from '../components/shared/StatusBadge';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
@@ -18,7 +18,7 @@ export function Agents() {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
   const [showRegister, setShowRegister] = useState(false);
-  const [newAgent, setNewAgent] = useState({ name: '', hostname: '', description: '', environment: '' });
+  const [newAgentName, setNewAgentName] = useState('');
   const [registeredToken, setRegisteredToken] = useState<AgentRegisterResponse | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -33,7 +33,7 @@ export function Agents() {
     onSuccess: (data) => {
       setRegisteredToken(data);
       setShowRegister(false);
-      setNewAgent({ name: '', hostname: '', description: '', environment: '' });
+      setNewAgentName('');
       qc.invalidateQueries({ queryKey: ['agents'] });
     },
     onError: () => toast.error('Failed to register agent'),
@@ -75,23 +75,37 @@ export function Agents() {
           <div className="flex items-start gap-3">
             <CheckCircle size={20} className="text-threat-info flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-semibold text-sentinel-text mb-1">Agent registered successfully</h3>
+              <h3 className="font-semibold text-sentinel-text mb-1">Agent ready to start</h3>
               <p className="text-sm text-sentinel-subtle mb-4">
-                Copy the token below — it will <strong className="text-threat-critical">never be shown again</strong>.
+                Open PowerShell as Administrator in the project folder, then paste the one-step command at the PS prompt.
+                It sets up the agent and selects capture adapters automatically. Keep that window open while monitoring.
+              </p>
+              <div className="text-xs text-sentinel-subtle mb-1">Agent ID</div>
+              <div className="bg-sentinel-bg border border-sentinel-border rounded-lg p-3 font-mono text-xs text-sentinel-text break-all mb-3">
+                {registeredToken.id}
+              </div>
+              <p className="text-sm text-sentinel-subtle mb-2">
+                Save the token now. It is shown once and must be kept private.
               </p>
               <div className="bg-sentinel-bg border border-sentinel-border rounded-lg p-4 font-mono text-xs text-sentinel-text break-all mb-3">
                 {registeredToken.token}
               </div>
               <div className="flex gap-3">
-                <button onClick={() => handleCopy(registeredToken.token)} className="btn-secondary flex items-center gap-2 text-xs">
-                  {copied ? <CheckCircle size={12} /> : <Copy size={12} />}
-                  {copied ? 'Copied!' : 'Copy Token'}
-                </button>
-                <button onClick={() => handleCopy(
-                  `python ids_agent.py --server-url ${registeredToken.server_url} --agent-id ${registeredToken.id} --token ${registeredToken.token}`
-                )} className="btn-secondary flex items-center gap-2 text-xs">
+                <button onClick={() => handleCopy(registeredToken.id)} className="btn-secondary flex items-center gap-2 text-xs">
                   <Copy size={12} />
-                  Copy Start Command
+                  Copy Agent ID
+                </button>
+                <button onClick={() => handleCopy(registeredToken.token)} className="btn-secondary flex items-center gap-2 text-xs">
+                  <Copy size={12} />
+                  Copy Token
+                </button>
+                <button onClick={() => {
+                  const endpoint = `${registeredToken.server_url.replace(/\/+$/, '')}/api/v1/events`;
+                  const quote = (value: string) => `'${value.replace(/'/g, "''")}'`;
+                  handleCopy(`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\agent\\start_agent.ps1 -AgentId ${quote(registeredToken.id)} -Token ${quote(registeredToken.token)} -ServerUrl ${quote(endpoint)}`);
+                }} className="btn-primary flex items-center gap-2 text-xs">
+                  <Copy size={12} />
+                  {copied ? 'Copied!' : 'Copy One-Step Start Command'}
                 </button>
                 <button onClick={() => setRegisteredToken(null)} className="btn-secondary text-xs ml-auto">
                   Dismiss
@@ -106,28 +120,15 @@ export function Agents() {
       {showRegister && (
         <div className="card p-6">
           <h3 className="font-semibold text-sentinel-text mb-4">Register New Agent</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-sentinel-subtle mb-1">Agent Name *</label>
-              <input className="input w-full" placeholder="prod-server-01" value={newAgent.name} onChange={e => setNewAgent(p => ({ ...p, name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-sentinel-subtle mb-1">Hostname</label>
-              <input className="input w-full" placeholder="server-01.company.com" value={newAgent.hostname} onChange={e => setNewAgent(p => ({ ...p, hostname: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-sentinel-subtle mb-1">Environment</label>
-              <input className="input w-full" placeholder="production / staging" value={newAgent.environment} onChange={e => setNewAgent(p => ({ ...p, environment: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-sentinel-subtle mb-1">Description</label>
-              <input className="input w-full" placeholder="Optional description" value={newAgent.description} onChange={e => setNewAgent(p => ({ ...p, description: e.target.value }))} />
-            </div>
+          <p className="text-sm text-sentinel-subtle mb-3">Give this computer a simple name. The other details are filled in automatically when it starts.</p>
+          <div className="max-w-xl">
+            <label className="block text-xs font-medium text-sentinel-subtle mb-1">Agent Name *</label>
+            <input className="input w-full" placeholder="My computer" value={newAgentName} onChange={e => setNewAgentName(e.target.value)} />
           </div>
           <div className="flex gap-3 mt-4">
             <button
-              onClick={() => registerMutation.mutate(newAgent)}
-              disabled={!newAgent.name || registerMutation.isPending}
+              onClick={() => registerMutation.mutate({ name: newAgentName.trim() })}
+              disabled={!newAgentName.trim() || registerMutation.isPending}
               className="btn-primary disabled:opacity-50"
             >
               {registerMutation.isPending ? 'Registering…' : 'Register Agent'}

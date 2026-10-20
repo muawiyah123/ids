@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+import tempfile
+from pathlib import Path
 import pytest
 import pytest_asyncio
 from typing import AsyncGenerator
@@ -17,15 +19,16 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 # Use SQLite for unit tests if no DB URL provided
+_test_db_path = Path(tempfile.gettempdir()) / f"ids_sentinel_test_{os.getpid()}.db"
 TEST_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "sqlite+aiosqlite:///./test_ids.db"
+    f"sqlite+aiosqlite:///{_test_db_path.as_posix()}"
 )
 
 # Override settings before importing app
 os.environ.setdefault("SECRET_KEY", "test_secret_key_do_not_use_in_production")
-os.environ.setdefault("DATABASE_URL", TEST_DB_URL)
-os.environ.setdefault("MODEL_DIR", "./model/artifacts")
+os.environ["DATABASE_URL"] = TEST_DB_URL
+os.environ.setdefault("MODEL_DIR", "../model/artifacts")
 os.environ.setdefault("REDIS_ENABLED", "false")
 
 
@@ -39,6 +42,7 @@ def event_loop():
 @pytest_asyncio.fixture(scope="session")
 async def db_engine():
     from app.database import Base
+    from app import models  # noqa: F401 — register every ORM model on Base
     engine = create_async_engine(TEST_DB_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -57,7 +61,7 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
     from app.main import app
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

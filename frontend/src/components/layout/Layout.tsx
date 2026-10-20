@@ -10,13 +10,13 @@ import { Toaster } from 'react-hot-toast';
 
 export function Layout() {
   const { isAuthenticated } = useAuthStore();
-  const { isConnected } = useRealtimeEvents(isAuthenticated);
+  const realtime = useRealtimeEvents(isAuthenticated);
 
   return (
     <div className="flex h-screen bg-sentinel-bg overflow-hidden">
-      <Sidebar isConnected={isConnected} />
+      <Sidebar isConnected={realtime.isConnected} />
       <main className="flex-1 overflow-y-auto">
-        <Outlet context={{ isConnected }} />
+        <Outlet context={realtime} />
       </main>
       <Toaster
         position="top-right"

@@ -69,6 +69,32 @@ class DetectionService:
 
         predicted_class = inference_result["prediction"]
         confidence = inference_result["confidence"]
+        detection_rule = (event.metadata or {}).get("detection_rule")
+        model_prediction = predicted_class
+        model_confidence = confidence
+
+        # The model is trained on completed flow records. A SYN flood is a
+        # packet-rate pattern across many incomplete flows, so the agent also
+        # sends a rate-rule signal when the configured window threshold trips.
+        if detection_rule == "tcp_syn_flood_rate":
+            predicted_class = "DoS"
+            confidence = 1.0
+
+        # A port scan is a pattern across many short flows, so classify it by
+        # correlating TCP SYN events across destination ports as well as using
+        # the per-flow model.
+        from app.services.port_scan_detector import port_scan_detector
+        is_port_scan = False
+        if detection_rule != "tcp_syn_flood_rate":
+            is_port_scan = port_scan_detector.observe(
+                event.source_ip,
+                event.destination_ip,
+                event.destination_port,
+                event.protocol,
+                event.features,
+            )
+        if is_port_scan:
+            predicted_class = "PortScan"
 
         # 3. Compute severity
         severity = compute_severity(predicted_class, confidence)
@@ -95,7 +121,14 @@ class DetectionService:
             inference_ms=inference_result.get("inference_ms"),
             probabilities=inference_result.get("probabilities"),
             raw_features=dict(event.features),  # store as-is (full agent payload)
-            metadata_=event.metadata,
+            metadata_={
+                **(event.metadata or {}),
+                **({"model_prediction": model_prediction,
+                    "model_confidence": model_confidence,
+                    "classification_source": "tcp_syn_flood_rate_rule"}
+                   if detection_rule == "tcp_syn_flood_rate" else {}),
+                **({"detection_rule": "tcp_port_scan_correlation"} if is_port_scan else {}),
+            },
         )
         self.db.add(detection)
 

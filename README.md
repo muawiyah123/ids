@@ -368,36 +368,27 @@ This is clearly documented application logic — not a claim about model capabil
 
 ### Prerequisites
 
-- **Docker** 24+ and **Docker Compose** V2
-- **Python 3.11+** (for local development)
-- **Node.js 20+** (for frontend development)
-- The ML model artifacts (`model/artifacts/`) — included in the repository
+- **Docker Desktop** with Docker Compose
+- The ML model artifacts (`model/artifacts/`) are included in the repository
 
 ### Option 1: Docker Compose (Recommended)
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/ids-sentinel.git
-cd ids-sentinel
-
-# 2. Copy and configure environment variables
-cp .env.example .env
-# Edit .env — at minimum, set:
-#   SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_urlsafe(48))">
-#   SEED_ADMIN_EMAIL=admin@example.com
-#   SEED_ADMIN_PASSWORD=YourSecurePassword1!
-
-# 3. Start the full stack
-docker compose up -d
-
-# 4. Run database migrations
-docker compose exec backend alembic upgrade head
-
-# 5. (Optional) Seed demo data
-docker compose exec backend python scripts/seed_demo.py
+```powershell
+# Start Docker Desktop first, then open PowerShell in this project folder.
+cd "C:\Users\Muawiyah\Desktop\fyp\ids"
+if (-not (Test-Path .env)) {
+    if (Test-Path .env.example) {
+        Copy-Item .env.example .env
+    } else {
+        throw "No .env file or .env.example found. Open the IDS project folder first."
+    }
+}
+docker compose up -d --build
+docker compose ps
 ```
 
-Access the dashboard at **http://localhost:5173**
+Access the dashboard at **http://localhost:5173**. Check backend/model readiness
+at **http://localhost:8000/ready**. Database migrations run automatically.
 
 ### Option 2: Local Development
 
@@ -435,25 +426,19 @@ npm run dev
 # Opens at http://localhost:5173
 ```
 
-#### Network Agent
+#### Network Agent (Windows)
 
-```bash
-cd agent
-pip install -r requirements.txt
+1. Open **Agents** in the dashboard and click **Register Agent**. Enter a name.
+2. Click **Copy One-Step Start Command**.
+3. In Administrator PowerShell, go to the project folder and paste the command
+   at the PowerShell prompt.
 
-# Register an agent via the API first (requires admin login),
-# then start the agent with your token:
-python ids_agent.py \
-  --server-url http://localhost:8000 \
-  --agent-id <your-agent-id> \
-  --token <your-agent-token>
-
-# For testing without network (offline mode):
-python test_offline.py
-```
+The command prepares the agent and selects active capture adapters automatically.
+You do not need to choose an interface. Install Npcap once for Windows packet
+capture, and keep the agent PowerShell window open while monitoring. The token
+is secret; do not share it or include it in screenshots.
 
 ---
-
 ## ⚙️ Configuration
 
 All configuration is via environment variables (loaded from `.env` file). Copy `.env.example` and customize:
@@ -476,7 +461,8 @@ All configuration is via environment variables (loaded from `.env` file). Copy `
 | `REDIS_ENABLED` | `true` | Enable Redis integration |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | JWT access token lifetime |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime |
-| `MODEL_DIR` | `./model/artifacts` | Path to model artifact directory |
+| `MODEL_DIR` | `../model/artifacts` | Path to model artifact directory (when running from `backend/`) |
+| `PUBLIC_SERVER_URL` | request host | Public backend URL used when generating agent start commands |
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
 | `ALERT_CONFIDENCE_THRESHOLD` | `0.60` | Minimum confidence to create an alert |
 | `ALERT_DEDUP_WINDOW_MINUTES` | `10` | Deduplication window for alerts |

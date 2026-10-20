@@ -8,8 +8,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, JSON, String, Text, Uuid
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -29,7 +29,7 @@ class Detection(Base):
     __tablename__ = "detections"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Deduplication key from the agent
@@ -48,7 +48,7 @@ class Detection(Base):
 
     # Agent
     agent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+        Uuid(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     # Network context
@@ -68,13 +68,13 @@ class Detection(Base):
     inference_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Probability distribution (optional — XGBoost provides these)
-    probabilities: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    probabilities: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     # Raw feature payload (stored for investigation / reanalysis)
-    raw_features: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    raw_features: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     # Extra metadata from agent
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     # Relationships
     agent: Mapped["Agent"] = relationship("Agent", back_populates="detections")  # type: ignore[name-defined]

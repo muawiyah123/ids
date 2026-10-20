@@ -18,9 +18,10 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/layout/Layout';
 import { useAuthStore } from './stores/authStore';
+import { setUnauthorizedHandler } from './services/api';
 
 // Pages
-// Login import removed — auth bypassed
+import { Login } from './pages/Login';
 import { Dashboard }  from './pages/Dashboard';
 import { Monitor }    from './pages/Monitor';
 import { Alerts }     from './pages/Alerts';
@@ -45,29 +46,22 @@ const queryClient = new QueryClient({
 
 // ─── Inner app — has access to router context ─────────────────────────────────
 function AppRoutes() {
-  const { initialize, login } = useAuthStore();
+  const { initialize, isAuthenticated, isInitialized, setInitialized } = useAuthStore();
 
   useEffect(() => {
-    async function autoAuth() {
-      try {
-        await initialize();
-        if (!useAuthStore.getState().isAuthenticated) {
-          await login('jawadshaikh465@gmail.com', 'Jawadsk12');
-        }
-      } catch (err) {
-        console.warn('Auto auth error:', err);
-      }
-    }
-    autoAuth();
-  }, [initialize, login]);
+    setUnauthorizedHandler(() => useAuthStore.getState().clearSession());
+    initialize().finally(setInitialized);
+  }, [initialize, setInitialized]);
+
+  if (!isInitialized) {
+    return <div className="min-h-screen bg-sentinel-bg" />;
+  }
 
   return (
     <Routes>
-      {/* Login redirects to dashboard (auth bypassed) */}
-      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
 
-      {/* App shell — no auth guard */}
-      <Route element={<Layout />}>
+      <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard"  element={<Dashboard />} />
         <Route path="/monitor"    element={<Monitor />} />

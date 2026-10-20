@@ -71,6 +71,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             logger.warning("Redis unavailable (non-critical): %s", e)
 
+    # Optional first administrator bootstrap. This is only enabled when both
+    # values are explicitly configured and never resets an existing account.
+    if settings.SEED_ADMIN_EMAIL and settings.SEED_ADMIN_PASSWORD:
+        try:
+            from sqlalchemy import select
+            from app.database import AsyncSessionLocal
+            from app.models.user import User, UserRole
+            from app.services.auth_service import AuthService
+
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(User).where(User.email == settings.SEED_ADMIN_EMAIL.lower())
+                )
+                if result.scalar_one_or_none() is None:
+                    await AuthService(session).register(
+                        email=settings.SEED_ADMIN_EMAIL,
+                        password=settings.SEED_ADMIN_PASSWORD,
+                        full_name="IDS Sentinel Administrator",
+                        role=UserRole.SUPER_ADMIN,
+                    )
+                    logger.info("Bootstrapped initial administrator account")
+                else:
+                    logger.info("Configured administrator already exists; leaving it unchanged")
+        except Exception as e:
+            logger.error("Administrator bootstrap failed: %s", e)
+
     # 3. Register/update model version in DB
     if model_manager.is_ready:
         try:

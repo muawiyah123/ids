@@ -11,7 +11,7 @@ import os
 import pytest
 
 # Skip if model artifact not present
-MODEL_DIR = os.environ.get("MODEL_DIR", "./model/artifacts")
+MODEL_DIR = os.environ.get("MODEL_DIR", "../model/artifacts")
 PIPELINE_EXISTS = os.path.exists(os.path.join(MODEL_DIR, "ids_pipeline.pkl"))
 
 pytestmark = pytest.mark.skipif(

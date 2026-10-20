@@ -12,11 +12,14 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitialized: boolean;
 
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
   initialize: () => Promise<void>;
+  setInitialized: () => void;
+  clearSession: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -27,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitialized: false,
 
       login: async (email, password) => {
         set({ isLoading: true });
@@ -53,15 +57,17 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // Ignore logout errors
         }
-        clearTokens();
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        get().clearSession();
       },
 
       setUser: (user) => set({ user }),
 
       initialize: async () => {
         const { accessToken } = get();
-        if (!accessToken) return;
+        if (!accessToken) {
+          set({ user: null, isAuthenticated: false });
+          return;
+        }
         setTokens(accessToken, get().refreshToken || '');
         try {
           const user = await authApi.me();
@@ -70,6 +76,12 @@ export const useAuthStore = create<AuthState>()(
           clearTokens();
           set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
         }
+      },
+
+      setInitialized: () => set({ isInitialized: true }),
+      clearSession: () => {
+        clearTokens();
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
     }),
     {

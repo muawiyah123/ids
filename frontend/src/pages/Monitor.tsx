@@ -2,9 +2,10 @@
  * src/pages/Monitor.tsx — Live event monitor with real WebSocket feed and initial history
  */
 import React, { useState, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { Radio, Filter } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { useRealtimeEvents } from '../hooks/useRealtimeEvents';
+import type { RealtimeState } from '../hooks/useRealtimeEvents';
 import { detectionsApi } from '../services/api';
 import { SeverityBadge } from '../components/shared/SeverityBadge';
 import { formatRelativeTime } from '../lib/utils';
@@ -25,7 +26,7 @@ interface MonitorItem {
 }
 
 export function Monitor() {
-  const { isConnected, events } = useRealtimeEvents(true);
+  const { isConnected, events } = useOutletContext<RealtimeState>();
   const [filterClass, setFilterClass] = useState('');
   const [showBenign, setShowBenign] = useState(true);
 

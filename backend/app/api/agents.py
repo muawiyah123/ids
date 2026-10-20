@@ -173,7 +173,7 @@ async def register_agent(
     logger.info("Agent registered: %s by %s", agent.id, current_user.email)
 
     # Build the installation command/URL for the UI
-    server_url = str(request.base_url).rstrip("/")
+    server_url = (settings.PUBLIC_SERVER_URL or str(request.base_url)).rstrip("/")
 
     response = AgentRegisterResponse(
         **_agent_to_response(agent).model_dump(),

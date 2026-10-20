@@ -20,9 +20,11 @@ from app.models.user import UserRole
 
 
 async def main():
-    email = os.environ.get("SEED_ADMIN_EMAIL", "jawadshaikh465@gmail.com")
-    password = os.environ.get("SEED_ADMIN_PASSWORD", "Jawadsk12")
-    full_name = os.environ.get("SEED_ADMIN_NAME", "Jawad Shaikh")
+    email = os.environ.get("SEED_ADMIN_EMAIL")
+    password = os.environ.get("SEED_ADMIN_PASSWORD")
+    full_name = os.environ.get("SEED_ADMIN_NAME", "IDS Sentinel Administrator")
+    if not email or not password:
+        raise SystemExit("Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD before running this script.")
 
     async with AsyncSessionLocal() as db:
         svc = AuthService(db)

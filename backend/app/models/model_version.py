@@ -8,8 +8,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import Boolean, DateTime, Enum, Integer, JSON, String, Text, Uuid
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -28,7 +28,7 @@ class ModelVersion(Base):
     __tablename__ = "model_versions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     version: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)
     model_type: Mapped[str] = mapped_column(String(50), nullable=False)  # xgboost | random_forest
@@ -47,9 +47,9 @@ class ModelVersion(Base):
     # Training metadata (from metadata.json)
     feature_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     class_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    classes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    classes: Mapped[list | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     training_run_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    metrics: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     # Status
     is_loaded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

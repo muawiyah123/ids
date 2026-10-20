@@ -12,7 +12,7 @@ import { formatConfidence } from '../lib/severity';
 import type { Detection } from '../types';
 
 const CLASSES = [
-  'BENIGN', 'Bot', 'DDoS', 'DoS GoldenEye', 'DoS Hulk', 'DoS Slowhttptest',
+  'BENIGN', 'Bot', 'DDoS', 'DoS', 'DoS GoldenEye', 'DoS Hulk', 'DoS Slowhttptest',
   'DoS slowloris', 'FTP-Patator', 'Heartbleed', 'Infiltration', 'PortScan',
   'SSH-Patator', 'Web Attack - Brute Force', 'Web Attack - Sql Injection', 'Web Attack - XSS',
 ];

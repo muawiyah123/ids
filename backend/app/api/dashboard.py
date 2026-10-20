@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, func, case, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,8 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
 class DashboardSummary(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     total_detections: int
     threats_detected: int          # non-BENIGN detections
     critical_alerts: int

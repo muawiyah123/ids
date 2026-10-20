@@ -56,7 +56,8 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # ML Model
     # -------------------------------------------------------------------------
-    MODEL_DIR: str = "./model/artifacts"
+    # Local startup runs Uvicorn from backend/, beside the top-level model/ directory.
+    MODEL_DIR: str = "../model/artifacts"
     MODEL_PIPELINE_FILE: str = "ids_pipeline.pkl"
     MODEL_ENCODER_FILE: str = "label_encoder.pkl"
     MODEL_METADATA_FILE: str = "metadata.json"
@@ -67,6 +68,7 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Comma-separated list of allowed origins
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    PUBLIC_SERVER_URL: Optional[str] = None
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -145,8 +147,9 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_production_settings(self) -> "Settings":
         if self.is_production:
-            if self.SECRET_KEY in ("replace_me", "changeme", ""):
-                raise ValueError("SECRET_KEY must be set to a secure value in production")
+            insecure_prefixes = ("replace_me", "changeme", "dev_", "test_")
+            if len(self.SECRET_KEY) < 32 or self.SECRET_KEY.lower().startswith(insecure_prefixes):
+                raise ValueError("SECRET_KEY must be at least 32 non-placeholder characters in production")
             if self.DEBUG:
                 raise ValueError("DEBUG must be False in production")
         return self
