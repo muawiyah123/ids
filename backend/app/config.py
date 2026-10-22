@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     ENABLE_EMAIL_ALERTS: bool = False
     ENABLE_THREAT_INTEL: bool = False
 
+    # Optional AI-assisted detection explanations. Keep keys server-side.
+    AI_PROVIDER: str = "groq"  # groq | openai
+    AI_API_KEY: Optional[str] = None
+    AI_MODEL: Optional[str] = None
+    AI_BASE_URL: Optional[str] = None
+
     # -------------------------------------------------------------------------
     # API
     # -------------------------------------------------------------------------

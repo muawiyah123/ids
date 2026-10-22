@@ -15,7 +15,7 @@
 
 **A production-ready, security-hardened network intrusion detection system powered by a trained XGBoost machine learning model (Weighted F1 = 0.9987). Built with real authentication, real-time WebSocket events, a full SOC-grade React dashboard, and complete Docker deployment.**
 
-[Features](#-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Configuration](#-configuration) • [API Docs](#-api-documentation) • [ML Model](#-ml-model) • [Security](#-security) • [Deployment](#-deployment)
+[Features](#-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Attack Investigation](#-attack-investigation-and-prevention-workflow) • [Configuration](#-configuration) • [API Docs](#-api-documentation) • [ML Model](#-ml-model) • [Security](#-security) • [Deployment](#-deployment)
 
 </div>
 
@@ -68,6 +68,12 @@
 - **Assignment and notes** — analysts can assign alerts and add investigation notes
 - **Complete audit trail** — every state transition is recorded with actor, timestamp, and comment
 
+### Attack Investigation and Response Guidance
+- **Attack explanations in Live Monitor and Detections** — open any non-benign classification to see what the model detected, its confidence and severity, likely risk, and response recommendations
+- **Built-in playbooks** — guidance is available without an external AI key
+- **Optional AI enrichment** — backend-only Groq or OpenAI configuration can add contextual wording; provider failure falls back to the built-in playbook
+- **Analyst-controlled response** — recommendations support triage; this project does not automatically block hosts, change firewall rules, or stop services
+
 ### Analytics & Observability
 - **Dashboard KPIs**: total detections, threat counts, open/critical alerts, active agents, event rate
 - **Detection timeline** — hourly bucketed chart (configurable window)
@@ -96,6 +102,7 @@
 - **Zustand** — lightweight auth store with localStorage persistence
 - **Recharts** — area charts, bar charts, pie charts, line charts — all live data
 - **Live monitor** — real-time detection feed with class and BENIGN toggle filters
+- **Security Assistant** — authenticated chatbot for general cybersecurity and defensive questions using the configured Groq/OpenAI provider
 - **Responsive layout** — works on 1280px+ displays (desktop/workstation first)
 
 ---
@@ -121,6 +128,7 @@
 │  ┌────▼──────────────▼──────────────▼───────────────────▼────────┐ │
 │  │                    Service Layer                                │ │
 │  │  AuthService │ DetectionService │ AlertService │ AuditService  │ │
+│  │  AttackAdvisor → built-in playbooks + optional AI enrichment  │ │
 │  └──────────────────────┬──────────────────────────────────────--─┘ │
 │                          │                                           │
 │  ┌───────────────────────▼──────────────────────────────────────┐  │
@@ -466,6 +474,10 @@ All configuration is via environment variables (loaded from `.env` file). Copy `
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
 | `ALERT_CONFIDENCE_THRESHOLD` | `0.60` | Minimum confidence to create an alert |
 | `ALERT_DEDUP_WINDOW_MINUTES` | `10` | Deduplication window for alerts |
+| `AI_PROVIDER` | `groq` | Optional explanation provider: `groq` or `openai` |
+| `AI_API_KEY` | empty | Optional provider key; backend only, never expose in frontend config |
+| `AI_MODEL` | provider default | Optional chat-completions model override |
+| `AI_BASE_URL` | provider default | Optional trusted OpenAI-compatible API base URL |
 | `MAX_EVENT_BATCH_SIZE` | `500` | Maximum events per batch request |
 | `SEED_ADMIN_EMAIL` | `None` | Admin email for initial seeding |
 | `SEED_ADMIN_PASSWORD` | `None` | Admin password for initial seeding |
@@ -476,6 +488,138 @@ In `APP_ENV=production`, the app enforces:
 - `SECRET_KEY` must not be `replace_me`, `changeme`, or empty
 - `DEBUG` must be `false`
 - API docs (`/docs`, `/redoc`) are disabled
+
+---
+
+## 🛡️ Attack Investigation and Prevention Workflow
+
+This section explains the complete path from observing network traffic to investigating a classification and applying a defensive control. Follow it after completing [Quick Start](#-quick-start).
+
+### 1. Know what the system does
+
+The sensor/agent collects network flows and sends flow features to the backend. The ML model labels each flow (for example `PortScan`, `SSH-Patator`, `Web Attack - Sql Injection`, `DDoS`, or `BENIGN`). The backend stores the detection, may create or update an alert, and publishes a real-time event to the dashboard.
+
+When a threat appears in **Live Monitor** or **Detections**, select **Explain** to view its attack class, confidence, severity, network endpoints, likely risk, and recommended response steps. The built-in playbook is always available. If AI is configured, the explanation can include provider-generated wording; it remains advisory and is not the detection engine.
+
+> **Important prevention boundary:** IDS Sentinel is currently a network intrusion **detection and analyst-guidance** platform. It does not automatically prevent, block, quarantine, or remediate traffic. A detection is evidence to investigate, not proof that an attack succeeded. For actual prevention, use your firewall, router ACL, WAF, endpoint protection, identity controls, or upstream DDoS service. Apply changes through those controls after validation.
+
+The agent observes traffic visible to the host/interface where it runs. For broader coverage, deploy authorized sensors on the relevant servers or provide traffic from a properly configured network TAP/SPAN/mirror port. A sensor on one workstation does not automatically see every device's traffic.
+
+### 2. Start the stack and create an analyst account
+
+From the project root, start Docker Desktop and run:
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker compose up -d --build
+docker compose ps
+```
+
+Open `http://localhost:5173`, create an account from the login/register screen if you do not already have one, then sign in. Check `http://localhost:8000/ready`; a ready response means the API, database, and model are available. If readiness fails, inspect `docker compose logs backend` before continuing.
+
+For a real monitoring run, register an agent from **Agents** and use the generated one-step command on a machine/network you are authorized to monitor. On Windows, install Npcap if required, run the capture process with the privileges required by the selected adapter, and leave the agent running. In **Agents**, confirm its status becomes **ONLINE**. Keep its token secret.
+
+### 3. Configure optional AI explanations
+
+AI is optional. Without a key, built-in explanations are returned and the **Explain** action still works. The recommended default is **Groq** for fast, cost-conscious enrichment. OpenAI is supported as an alternative. Choose a provider based on your organization's data handling, account, model availability, and cost requirements.
+
+1. Create an API key in the provider account you control.
+2. Open the project-root `.env` file. Do not put the key in frontend variables, source code, screenshots, issue reports, or a committed file.
+3. Set one provider and a key:
+
+```dotenv
+AI_PROVIDER=groq
+AI_API_KEY=your_groq_api_key_here
+# Optional; if omitted, the backend uses its configured provider default.
+AI_MODEL=
+AI_BASE_URL=
+```
+
+For OpenAI, use:
+
+```dotenv
+AI_PROVIDER=openai
+AI_API_KEY=your_openai_api_key_here
+AI_MODEL=
+AI_BASE_URL=
+```
+
+The current backend defaults are `llama-3.3-70b-versatile` for Groq and `gpt-4o-mini` for OpenAI. Provider model availability can change; if your account does not support its default, set `AI_MODEL` to a currently available chat-completions model for your selected provider. Set `AI_BASE_URL` only when using a trusted, compatible OpenAI-style endpoint. Do not set a browser `VITE_*` variable for a secret.
+
+4. Save `.env` and restart the backend so it reloads the configuration:
+
+```powershell
+docker compose up -d --build backend
+docker compose logs --tail 100 backend
+```
+
+5. Open **Live Monitor** or **Detections**, select **Explain** beside a non-`BENIGN` row, and confirm the explanation appears. When no key is configured, the response source is the built-in playbook. When AI succeeds, the source identifies the provider/model. If the provider times out, rejects the key, or returns an unusable response, the backend logs a warning and returns the built-in playbook instead.
+
+The API key stays in backend configuration. Only the attack label and limited non-identifying flow context (severity, confidence, ports, and protocol) are sent to the configured provider; source and destination IP addresses are excluded. Do not send sensitive telemetry to a provider unless your organization permits it. Review the provider's current data, retention, and account terms before enabling it.
+
+### 4. Read an alert and investigate the event
+
+1. In **Live Monitor**, wait for the flow to appear. A non-benign predicted class is visually highlighted. Select **Explain** to expand its investigation and response guidance.
+2. In **Detections**, filter by severity, attack class, or source IP, then select **Explain** on a threat to open the full investigation panel.
+3. Check timestamp, class, severity, confidence, source/destination, protocol, and destination port against other telemetry. A high confidence score is the model's confidence in its label; it does not prove compromise or business impact.
+4. Go to **Alerts** to acknowledge the alert, mark it investigating, add notes/assignment, and record the outcome. Resolve it or mark it false positive after investigation.
+5. Preserve relevant logs and follow your incident-response procedure. Record what you checked and what control, if any, you applied.
+
+### 5. Apply prevention through the appropriate control
+
+Use the playbook as a starting point and adapt it to the affected service and your change-control process. Examples:
+
+| Detection | Defensive controls to investigate |
+|---|---|
+| `PortScan` | Verify authorized scanner status; restrict exposed ports with firewall/security-group rules; disable unused services. |
+| `SSH-Patator` / `FTP-Patator` | Review successful logins; restrict management access; use keys/MFA where supported; disable legacy FTP or password login where practical; rotate credentials if exposure is suspected. |
+| `Web Attack - Sql Injection` | Check application/database logs; fix unsafe query construction using parameterized queries; apply input validation and least-privilege database permissions; use WAF rules as a compensating control. |
+| `Web Attack - XSS` | Fix context-aware output encoding and unsafe templating; sanitize rich text; review affected pages; deploy a restrictive Content Security Policy. |
+| `DoS`, `DDoS`, `DoS Hulk`, `DoS GoldenEye`, `DoS slowloris`, `DoS Slowhttptest` | Confirm service impact; use provider/CDN/WAF/load-balancer rate controls and appropriate request/connection timeouts; contact the upstream network provider for volumetric events. |
+| `Heartbleed` | Identify affected TLS/OpenSSL services; patch; rotate certificates and secrets if a vulnerable service was exposed. |
+| `Infiltration` / `Bot` | Correlate endpoint, DNS, identity, and network logs; contain a host or block a source only after validating ownership, scope, and impact. |
+
+Do not blindly block an IP: it may be a shared NAT, proxy, scanner, CDN, internal system, or false positive. Prefer narrow, time-bounded controls with an owner, reason, expiry/review time, and rollback plan. Confirm the control worked and that legitimate service was not disrupted.
+
+### 6. Verify the full path
+
+Use this checklist for a controlled deployment or demonstration:
+
+- [ ] `/ready` succeeds and the **AI Model** page shows the model ready.
+- [ ] The registered agent reports **ONLINE** and the WebSocket indicator shows **Live feed connected**.
+- [ ] An authorized test flow appears in **Live Monitor** and **Detections** with a timestamp, class, confidence, and severity.
+- [ ] A non-benign flow creates/updates an alert when it meets the configured alert confidence threshold.
+- [ ] **Explain** returns a built-in playbook without a key; with a valid provider key, AI enrichment succeeds and indicates its source.
+- [ ] Provider failure still returns built-in guidance; the backend logs do not reveal the API key.
+- [ ] An analyst records validation and a response outcome in **Alerts**.
+- [ ] Any actual prevention rule is applied and verified in the relevant firewall/WAF/endpoint platform, with rollback available.
+
+Use the repository's traffic simulator or a controlled lab dataset for demos. Only generate attack-like traffic against systems you own or have explicit authorization to test. A simulator may submit crafted flow features for UI demonstration; this proves the application path works, not that a production network attack was prevented.
+
+### 7. Operational limitations and next steps for automated response
+
+- Detection quality depends on sensor placement, captured traffic, feature extraction, model coverage, and how closely live traffic resembles training data. Validate detections in your own environment.
+- Flow-based classification provides metadata and statistics; it may not contain the full packet or application payload needed to prove an exploit.
+- The explanation is generated on request when an analyst selects **Explain**. Detection itself does not wait for an LLM, and built-in advice remains available if the provider is offline.
+- There is no automatic firewall/EDR/WAF action in this implementation. To add one, build an explicit, authenticated response integration for your chosen control plane; define source validation, RBAC, approval thresholds, allowlists, rate limits, deduplication, audit records, expiration, rollback, dry-run mode, and failure handling first. Keep human approval enabled until the integration has passed controlled testing. Never execute arbitrary LLM-generated commands or firewall rules.
+- For production, use HTTPS, restrict dashboard/API access, store secrets in a managed secret store, back up the database, synchronize clocks, and alert on agent/API/provider failures.
+
+### Security Assistant
+
+Open **Security Assistant** from the left navigation to ask general cybersecurity questions, including attack concepts, hardening, incident-response triage, secure configuration, and IDS Sentinel workflows. It uses the same backend `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` settings as attack explanations. If no provider key is configured, the assistant page explains how to enable it and keeps chat disabled. Conversation history is held in the current browser page only; **New chat** clears it. The backend accepts up to 16 messages per request, up to 4,000 characters per message, and 12 chat requests per user per minute per backend process. User chat text is sent to the configured AI provider, so do not include credentials, API keys, personal data, or sensitive logs.
+
+The assistant is for authorized defensive use. It cannot access stored detections unless you include relevant non-sensitive context in your question, cannot inspect your network, and cannot apply firewall or system changes. It may make mistakes; validate advice before using it, especially during an incident. Requests to attack third-party systems are outside its intended use.
+
+### Troubleshooting attack explanations
+
+| Symptom | What to check |
+|---|---|
+| No detections arrive | Confirm the agent is running and ONLINE, the correct interface is being captured, the backend is reachable, and the event-ingestion logs show accepted events. |
+| Detection appears but no alert | Check whether the event is `BENIGN`, its confidence is below `ALERT_CONFIDENCE_THRESHOLD`, or the alert is deduplicated into an existing alert. |
+| Explain action is missing | Explanations are only offered for non-benign detections. Refresh the page and confirm the frontend/backend versions are current. |
+| Built-in advice appears without AI | `AI_API_KEY` may be empty, the backend may not have been restarted, or the provider request may have failed. Check backend logs and confirm `AI_PROVIDER`, key, model, and provider account access. |
+| Explain request returns an error | Confirm the user is signed in, the detection still exists, and the backend is reachable. Inspect backend logs for provider/network errors; built-in guidance should be returned for provider failures. |
+| Container does not see updated settings | Confirm `.env` is in the project root (next to `docker-compose.yml`) and recreate/restart the backend with `docker compose up -d --build backend`. |
 
 ---
 
@@ -572,9 +716,38 @@ curl -X POST http://localhost:8000/api/v1/events \
 | `GET` | `/detections` | JWT | Paginated list with filtering |
 | `GET` | `/detections/{id}` | JWT | Detection detail |
 | `GET` | `/detections/{id}/features` | JWT | Raw feature payload |
+| `POST` | `/detections/{id}/explanation` | JWT | Built-in/AI explanation and defensive guidance for a threat |
 | `GET` | `/detections/export/csv` | JWT | Stream CSV export |
 
+#### Security Assistant
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/assistant/status` | JWT | Report whether an AI key is configured and the selected provider |
+| `POST` | `/assistant/chat` | JWT | Answer a cybersecurity question using the configured provider; accepts up to 16 user/assistant messages; limited to 12 requests/user/minute per process |
+
+Chat request example:
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "How do I investigate an SSH brute-force alert?"}
+  ]
+}
+```
+
+The chat endpoint returns `answer`, `provider`, and `model`. It returns HTTP 503 when the provider key is not configured and HTTP 502 when the provider is unavailable or rejects the request. Chat messages are not persisted by this endpoint.
+
 **Filtering parameters:** `severity`, `predicted_class`, `source_ip`, `destination_ip`, `agent_id`, `from_time`, `to_time`, `min_confidence`, `sort_by`, `sort_dir`, `page`, `page_size`
+
+**Request an explanation directly:** first sign in to obtain a user access token, and get a detection ID from `GET /api/v1/detections`. Then call the authenticated explanation endpoint:
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/detections/<detection-id>/explanation" \
+  -H "Authorization: Bearer <user-access-token>"
+```
+
+The response contains `attack`, `summary`, `risk`, `actions`, and `source`. The same endpoint is used by the dashboard's **Explain** controls. It returns HTTP 400 for a `BENIGN` detection and HTTP 404 when the detection ID does not exist. Provider errors use built-in advice as a fallback rather than failing the explanation request.
 
 #### Alerts
 

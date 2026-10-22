@@ -189,7 +189,7 @@ def create_app() -> FastAPI:
         )
 
     # ---- Routers ----
-    from app.api import auth, agents, events, detections, alerts
+    from app.api import auth, agents, events, detections, alerts, assistant
     from app.api import dashboard, analytics, models_api, audit, health, websocket
 
     prefix = settings.API_V1_PREFIX
@@ -203,6 +203,7 @@ def create_app() -> FastAPI:
     app.include_router(events.router, prefix=prefix)
     app.include_router(detections.router, prefix=prefix)
     app.include_router(alerts.router, prefix=prefix)
+    app.include_router(assistant.router, prefix=prefix)
     app.include_router(dashboard.router, prefix=prefix)
     app.include_router(analytics.router, prefix=prefix)
     app.include_router(models_api.router, prefix=prefix)

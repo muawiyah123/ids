@@ -32,6 +32,7 @@ import { Models }     from './pages/Models';
 import { Health }     from './pages/Health';
 import { Audit }      from './pages/Audit';
 import { Settings }   from './pages/Settings';
+import { Assistant }  from './pages/Assistant';
 
 // ─── TanStack Query client ────────────────────────────────────────────────────
 const queryClient = new QueryClient({
@@ -73,6 +74,7 @@ function AppRoutes() {
         <Route path="/health"     element={<Health />} />
         <Route path="/audit"      element={<Audit />} />
         <Route path="/settings"   element={<Settings />} />
+        <Route path="/assistant"  element={<Assistant />} />
 
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

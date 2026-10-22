@@ -140,8 +140,13 @@ NEW → ACKNOWLEDGED → INVESTIGATING → RESOLVED
 - Every network flow analysed by the model appears here
 - Shows: timestamp, class, confidence %, severity, agent, source/destination IP
 - Filter by class name, severity, or time range
-- Click a detection to see all 15 class probabilities from the model
+- Select **Explain** on a threat to open its investigation panel: attack type, confidence, network context, likely risk, and defensive response steps
 - Export data for offline analysis
+
+Attack explanations work from built-in playbooks with no API key. To add AI-generated context, set `AI_API_KEY` and `AI_PROVIDER=groq` in the project-root `.env` before starting the backend. Groq is the recommended default for fast, cost-conscious explanations; `AI_PROVIDER=openai` is also supported. The key is used only by the backend and is never sent to the browser. If the provider is unavailable, the built-in guidance is returned automatically. These recommendations support analyst triage and do not block traffic or take response actions automatically.
+
+### 🤖 Security Assistant (`/assistant`)
+Ask general cybersecurity and defensive operations questions in the authenticated chat page. It uses the same Groq/OpenAI settings as attack explanations. Add a key to `AI_API_KEY` in the project-root `.env` and restart the backend; chat is disabled until a provider key is configured. Chat messages go to that provider and are held in the browser session only, so never include passwords, API keys, personal data, or sensitive logs. The assistant provides guidance only and cannot inspect or change your network.
 
 ---
 

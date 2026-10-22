@@ -10,6 +10,25 @@ import type {
   DashboardSummary, TimelinePoint, Page, ModelStatus, AuditLog,
 } from '../types';
 
+export interface AttackExplanation {
+  attack: string;
+  summary: string;
+  risk: string;
+  actions: string[];
+  source: string;
+}
+
+export interface AssistantMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AssistantReply {
+  answer: string;
+  provider: string;
+  model: string;
+}
+
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/v1`
   : '/api/v1';
@@ -155,6 +174,10 @@ export const detectionsApi = {
     const res = await api.get(`/detections/${id}/features`);
     return res.data;
   },
+  explain: async (id: string): Promise<AttackExplanation> => {
+    const res = await api.post(`/detections/${id}/explanation`);
+    return res.data;
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -276,6 +299,20 @@ export const auditApi = {
 export const healthApi = {
   check: async (): Promise<{ status: string; checks: Record<string, unknown> }> => {
     const res = await api.get('/ready');
+    return res.data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Security Assistant
+// ---------------------------------------------------------------------------
+export const assistantApi = {
+  status: async (): Promise<{ configured: boolean; provider: string }> => {
+    const res = await api.get('/assistant/status');
+    return res.data;
+  },
+  chat: async (messages: AssistantMessage[]): Promise<AssistantReply> => {
+    const res = await api.post('/assistant/chat', { messages });
     return res.data;
   },
 };

@@ -5,7 +5,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Shield, LayoutDashboard, Radio, Bell, Search,
-  BarChart3, Server, Cpu, ClipboardList, Settings, LogOut, Wifi, WifiOff,
+  BarChart3, Server, Cpu, ClipboardList, Settings, LogOut, Wifi, WifiOff, Bot,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../lib/utils';
@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/monitor', icon: <Radio size={18} />, label: 'Live Monitor' },
   { path: '/alerts', icon: <Bell size={18} />, label: 'Alerts' },
   { path: '/detections', icon: <Search size={18} />, label: 'Detections' },
+  { path: '/assistant', icon: <Bot size={18} />, label: 'Security Assistant' },
   { path: '/analytics', icon: <BarChart3 size={18} />, label: 'Analytics' },
   { path: '/agents', icon: <Server size={18} />, label: 'Agents', roles: ['ADMIN', 'SUPER_ADMIN'] },
   { path: '/models', icon: <Cpu size={18} />, label: 'AI Model' },

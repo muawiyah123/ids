@@ -1,12 +1,12 @@
 /**
  * src/pages/Monitor.tsx — Live event monitor with real WebSocket feed and initial history
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Fragment } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Radio, Filter } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Radio, Filter, Sparkles, CircleAlert } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type { RealtimeState } from '../hooks/useRealtimeEvents';
-import { detectionsApi } from '../services/api';
+import { detectionsApi, type AttackExplanation } from '../services/api';
 import { SeverityBadge } from '../components/shared/SeverityBadge';
 import { formatRelativeTime } from '../lib/utils';
 import { formatConfidence } from '../lib/severity';
@@ -23,12 +23,16 @@ interface MonitorItem {
   destination_port?: number | null;
   inference_ms?: number | null;
   isLive?: boolean;
+  protocol?: string | null;
+  source_port?: number | null;
 }
 
 export function Monitor() {
   const { isConnected, events } = useOutletContext<RealtimeState>();
   const [filterClass, setFilterClass] = useState('');
   const [showBenign, setShowBenign] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const explanation = useMutation({ mutationFn: detectionsApi.explain });
 
   // Load existing detections from DB on mount
   const { data: initialData } = useQuery({
@@ -52,6 +56,8 @@ export function Monitor() {
           source_ip: d.source_ip,
           destination_ip: d.destination_ip,
           destination_port: d.destination_port,
+          source_port: d.source_port,
+          protocol: d.protocol,
           inference_ms: d.inference_ms,
           isLive: true,
         };
@@ -66,6 +72,8 @@ export function Monitor() {
       source_ip: d.source_ip,
       destination_ip: d.destination_ip,
       destination_port: d.destination_port,
+      source_port: d.source_port,
+      protocol: d.protocol,
       inference_ms: d.inference_ms,
       isLive: false,
     }));
@@ -150,12 +158,13 @@ export function Monitor() {
                 <th className="px-4 py-3 text-left font-mono">Dest IP</th>
                 <th className="px-4 py-3 text-left">Port</th>
                 <th className="px-4 py-3 text-left">Latency</th>
+                <th className="px-4 py-3 text-right">Response</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-sentinel-border/50">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sentinel-subtle text-sm">
+                  <td colSpan={9} className="px-4 py-12 text-center text-sentinel-subtle text-sm">
                     {isConnected ? 'Waiting for events…' : 'No events — connecting'}
                   </td>
                 </tr>
@@ -163,8 +172,8 @@ export function Monitor() {
                 filtered.map((d, idx) => {
                   const isThreat = d.predicted_class !== 'BENIGN';
                   return (
+                    <Fragment key={`${d.id}-${idx}`}>
                     <tr
-                      key={`${d.id}-${idx}`}
                       className={`hover:bg-sentinel-panel/50 transition-colors ${d.isLive && idx === 0 ? 'row-new' : ''}`}
                     >
                       <td className="px-4 py-3 text-xs text-sentinel-subtle whitespace-nowrap">
@@ -193,7 +202,16 @@ export function Monitor() {
                       <td className="px-4 py-3 text-xs font-mono text-sentinel-subtle">
                         {d.inference_ms ? `${d.inference_ms.toFixed(1)}ms` : '—'}
                       </td>
+                      <td className="px-4 py-2 text-right">
+                        {isThreat ? <button onClick={() => { setExpandedId(d.id); explanation.mutate(d.id); }} className="btn-secondary inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"><Sparkles size={13} />{expandedId === d.id ? 'Refresh' : 'Explain'}</button> : <span className="text-xs text-sentinel-subtle">—</span>}
+                      </td>
                     </tr>
+                    {expandedId === d.id && <tr><td colSpan={9} className="border-t border-sentinel-border bg-sentinel-panel/50 px-6 py-5">
+                      {explanation.isPending && explanation.variables === d.id ? <p className="text-sm text-sentinel-subtle">Preparing response guidance…</p>
+                        : explanation.isError && explanation.variables === d.id ? <div className="flex items-center gap-2 text-sm text-threat-high"><CircleAlert size={15} />Unable to load guidance. Select Explain to retry.</div>
+                        : explanation.data && explanation.variables === d.id ? <MonitorExplanation explanation={explanation.data} /> : null}
+                    </td></tr>}
+                    </Fragment>
                   );
                 })
               )}
@@ -203,4 +221,12 @@ export function Monitor() {
       </div>
     </div>
   );
+}
+
+function MonitorExplanation({ explanation }: { explanation: AttackExplanation }) {
+  return <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
+    <div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sentinel-accent"><Sparkles size={14} />{explanation.attack}</div><p className="mt-2 text-sm leading-relaxed">{explanation.summary}</p><p className="mt-3 flex gap-2 text-xs leading-relaxed text-sentinel-subtle"><CircleAlert size={14} className="mt-0.5 shrink-0 text-threat-high" />{explanation.risk}</p></div>
+    <div><div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-semibold uppercase tracking-wider text-sentinel-subtle">Recommended response</h3><span className="text-[10px] text-sentinel-subtle">{explanation.source}</span></div><ol className="space-y-2">{explanation.actions.map((action, i) => <li key={`${i}-${action}`} className="flex gap-2.5 text-xs leading-relaxed"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sentinel-accent/15 text-[10px] text-sentinel-accent">{i + 1}</span>{action}</li>)}</ol></div>
+    <p className="text-[11px] text-sentinel-subtle lg:col-span-2">Validate the classifier result against network and endpoint logs before disruptive response. No automatic blocking is performed.</p>
+  </div>;
 }

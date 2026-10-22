@@ -21,6 +21,7 @@ from app.models.detection import Detection, DetectionSeverity
 from app.models.user import User
 from app.security.dependencies import get_current_active_user
 from app.utils.pagination import Page, PageParams
+from app.services.attack_advisor import explain_attack
 
 router = APIRouter(prefix="/detections", tags=["Detections"])
 logger = logging.getLogger(__name__)
@@ -161,6 +162,31 @@ async def get_detection_features(
     if not det:
         raise HTTPException(status_code=404, detail="Detection not found")
     return {"detection_id": detection_id, "features": det.raw_features or {}}
+
+
+@router.post("/{detection_id}/explanation")
+async def get_detection_explanation(
+    detection_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Explain a classified flow and provide defensive triage guidance."""
+    result = await db.execute(select(Detection).where(Detection.id == detection_id))
+    detection = result.scalar_one_or_none()
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+    if detection.predicted_class == "BENIGN":
+        raise HTTPException(status_code=400, detail="Explanations are available for threat detections")
+    context = {
+        "severity": detection.severity.value,
+        "confidence": round(detection.confidence, 4),
+        "source_ip": detection.source_ip,
+        "destination_ip": detection.destination_ip,
+        "source_port": detection.source_port,
+        "destination_port": detection.destination_port,
+        "protocol": detection.protocol,
+    }
+    return await explain_attack(detection.predicted_class, context)
 
 
 @router.get("/export/csv")
