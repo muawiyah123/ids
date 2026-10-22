@@ -96,13 +96,11 @@ class ModelManager:
             #    importable even if joblib isn't installed yet at import time.
             import joblib
             import pandas as pd
-            # NOTE: ids_common.InfinityAndOutlierSanitizer is imported above
-            # and ids_common.py is on sys.path (inserted at module top), so
-            # joblib can locate the class during unpickling — provided the
-            # pipeline was saved by the current train.py which imports from
-            # ids_common (not __main__).  If you have an old .pkl that was
-            # pickled with __main__.InfinityAndOutlierSanitizer, retrain:
-            #   cd model && python train.py --data_dir <path>
+            # Older pipeline artifacts serialized this transformer under
+            # __main__.InfinityAndOutlierSanitizer. Register the current
+            # implementation under that legacy name before unpickling.
+            from ids_common import InfinityAndOutlierSanitizer
+            setattr(sys.modules["__main__"], "InfinityAndOutlierSanitizer", InfinityAndOutlierSanitizer)
 
             logger.info("Loading model artifacts…")
             logger.info("  pipeline : %s", pipeline_path)

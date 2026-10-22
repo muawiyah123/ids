@@ -25,8 +25,12 @@ if (-not (Test-Path $Python)) {
     }
 }
 
+$PreviousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 & $Python -c "import scapy.all, aiohttp" *> $null
-if ($LASTEXITCODE -ne 0) {
+$DependencyCheckExitCode = $LASTEXITCODE
+$ErrorActionPreference = $PreviousErrorActionPreference
+if ($DependencyCheckExitCode -ne 0) {
     Write-Host "Installing the agent's required packages..."
     & $Python -m pip install -r (Join-Path $PSScriptRoot "requirements.txt")
     if ($LASTEXITCODE -ne 0) {

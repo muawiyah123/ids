@@ -20,6 +20,7 @@ from app.security.dependencies import get_current_active_user, require_roles
 from app.services.alert_service import AlertService
 from app.services.audit_service import AuditService
 from app.services.websocket_service import ws_manager
+from app.services.attack_advisor import explain_attack
 from app.utils.pagination import Page, PageParams
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
@@ -147,6 +148,24 @@ async def get_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     return _alert_to_response(alert)
+
+
+@router.post("/{alert_id}/explanation")
+async def get_alert_explanation(
+    alert_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Return defensive guidance directly from the alert's stored classification."""
+    alert = await _get_alert_or_404(alert_id, db)
+    context = {
+        "severity": alert.severity.value,
+        "confidence": round(alert.confidence, 4),
+        "source_port": alert.source_port,
+        "destination_port": alert.destination_port,
+        "protocol": alert.protocol,
+    }
+    return await explain_attack(alert.attack_class, context)
 
 
 @router.get("/{alert_id}/events")

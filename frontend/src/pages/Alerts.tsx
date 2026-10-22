@@ -1,10 +1,11 @@
 /**
  * src/pages/Alerts.tsx — Alert management with filtering and status transitions
  */
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, CheckCircle, Eye, X } from 'lucide-react';
+import React, { Fragment, useState } from 'react';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Bell, CheckCircle, Eye, X, Sparkles, CircleAlert } from 'lucide-react';
 import { alertsApi } from '../services/api';
+import type { AttackExplanation } from '../services/api';
 import { SeverityBadge } from '../components/shared/SeverityBadge';
 import { AlertStatusBadge } from '../components/shared/StatusBadge';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
@@ -31,6 +32,15 @@ export function Alerts() {
       ...(severityFilter && { severity: severityFilter }),
     }),
     refetchInterval: 15000,
+  });
+  const alertItems = data?.items ?? [];
+  const guidanceQueries = useQueries({
+    queries: alertItems.map(alert => ({
+      queryKey: ['alert-guidance', alert.id],
+      queryFn: () => alertsApi.explain(alert.id),
+      staleTime: 10 * 60 * 1000,
+      retry: 1,
+    })),
   });
 
   const acknowledgeMutation = useMutation({
@@ -103,52 +113,71 @@ export function Alerts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-sentinel-border/50">
-                {(data?.items || []).map((alert: Alert) => (
-                  <tr key={alert.id} className="hover:bg-sentinel-panel/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sentinel-text truncate max-w-xs">{alert.title}</div>
-                      <div className="text-xs text-sentinel-subtle mt-0.5 font-mono">
-                        {alert.source_ip || '—'} → {alert.destination_ip || '—'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3"><SeverityBadge severity={alert.severity} size="sm" /></td>
-                    <td className="px-4 py-3"><AlertStatusBadge status={alert.status} /></td>
-                    <td className="px-4 py-3 font-mono text-xs">{formatConfidence(alert.confidence)}</td>
-                    <td className="px-4 py-3 text-xs text-sentinel-subtle">{alert.event_count}</td>
-                    <td className="px-4 py-3 text-xs text-sentinel-subtle">{formatRelativeTime(alert.last_seen_at)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {alert.status === 'NEW' && (
-                          <button
-                            onClick={() => acknowledgeMutation.mutate(alert.id)}
-                            className="p-1.5 rounded text-sentinel-subtle hover:text-threat-info hover:bg-threat-info/10 transition-colors"
-                            title="Acknowledge"
-                          >
-                            <CheckCircle size={14} />
-                          </button>
-                        )}
-                        {['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(alert.status) && (
-                          <>
-                            <button
-                              onClick={() => resolveMutation.mutate(alert.id)}
-                              className="p-1.5 rounded text-sentinel-subtle hover:text-threat-info hover:bg-threat-info/10 transition-colors"
-                              title="Resolve"
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <button
-                              onClick={() => fpMutation.mutate(alert.id)}
-                              className="p-1.5 rounded text-sentinel-subtle hover:text-threat-critical hover:bg-threat-critical/10 transition-colors"
-                              title="False Positive"
-                            >
-                              <X size={14} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {alertItems.map((alert: Alert, index: number) => {
+                  const guidance = guidanceQueries[index];
+                  return (
+                    <Fragment key={alert.id}>
+                      <tr className="hover:bg-sentinel-panel/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-sentinel-text truncate max-w-xs">{alert.title}</div>
+                          <div className="text-xs text-sentinel-subtle mt-0.5 font-mono">
+                            {alert.source_ip || '—'} → {alert.destination_ip || '—'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3"><SeverityBadge severity={alert.severity} size="sm" /></td>
+                        <td className="px-4 py-3"><AlertStatusBadge status={alert.status} /></td>
+                        <td className="px-4 py-3 font-mono text-xs">{formatConfidence(alert.confidence)}</td>
+                        <td className="px-4 py-3 text-xs text-sentinel-subtle">{alert.event_count}</td>
+                        <td className="px-4 py-3 text-xs text-sentinel-subtle">{formatRelativeTime(alert.last_seen_at)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            {alert.status === 'NEW' && (
+                              <button
+                                onClick={() => acknowledgeMutation.mutate(alert.id)}
+                                className="p-1.5 rounded text-sentinel-subtle hover:text-threat-info hover:bg-threat-info/10 transition-colors"
+                                title="Acknowledge"
+                              >
+                                <CheckCircle size={14} />
+                              </button>
+                            )}
+                            {['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(alert.status) && (
+                              <>
+                                <button
+                                  onClick={() => resolveMutation.mutate(alert.id)}
+                                  className="p-1.5 rounded text-sentinel-subtle hover:text-threat-info hover:bg-threat-info/10 transition-colors"
+                                  title="Resolve"
+                                >
+                                  <Eye size={14} />
+                                </button>
+                                <button
+                                  onClick={() => fpMutation.mutate(alert.id)}
+                                  className="p-1.5 rounded text-sentinel-subtle hover:text-threat-critical hover:bg-threat-critical/10 transition-colors"
+                                  title="False Positive"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      <tr className="bg-sentinel-panel/20">
+                        <td colSpan={7} className="px-5 pb-5 pt-3">
+                          {guidance.isPending ? (
+                            <div className="flex items-center gap-2 text-xs text-sentinel-subtle"><LoadingSpinner size="sm" className="text-sentinel-accent" />Preparing attack analysis and prevention guidance…</div>
+                          ) : guidance.isError ? (
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-threat-high">
+                              <span>Guidance could not be loaded. Check backend connectivity and the configured AI provider.</span>
+                              <button onClick={() => guidance.refetch()} className="btn-secondary px-2.5 py-1 text-xs">Retry</button>
+                            </div>
+                          ) : guidance.data ? (
+                            <AlertExplanationContent explanation={guidance.data} />
+                          ) : null}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
                 {(data?.items || []).length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-sentinel-subtle text-sm">
@@ -186,6 +215,16 @@ export function Alerts() {
           </div>
         )}
       </div>
+
     </div>
   );
+}
+
+function AlertExplanationContent({ explanation }: { explanation: AttackExplanation }) {
+  return <>
+    <div className="card p-5"><div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-sentinel-accent"><Sparkles size={14} />Attack overview</div><p className="mt-3 text-sm leading-relaxed text-sentinel-text">{explanation.summary}</p><div className="mt-4 rounded-lg border border-threat-high/20 bg-threat-high/5 p-3"><p className="flex items-center gap-2 text-xs font-semibold text-threat-high"><CircleAlert size={14} />Potential risk</p><p className="mt-1.5 text-sm leading-relaxed text-sentinel-subtle">{explanation.risk}</p></div>
+      <div className="mt-4 border-t border-sentinel-border pt-4"><h3 className="font-semibold">Prevention and response guidance</h3><ol className="mt-3 space-y-3">{explanation.actions.map((action, i) => <li key={`${i}-${action}`} className="flex gap-3 text-sm leading-relaxed"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sentinel-accent/15 text-xs font-semibold text-sentinel-accent">{i + 1}</span><span className="pt-0.5 text-sentinel-text">{action}</span></li>)}</ol></div>
+      <p className="mt-4 border-t border-sentinel-border pt-3 text-xs leading-relaxed text-sentinel-subtle">Treat this classification as a triage signal. Verify the activity using network and host logs before taking disruptive action.</p>
+    </div>
+  </>;
 }

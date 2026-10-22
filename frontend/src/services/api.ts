@@ -192,6 +192,10 @@ export const alertsApi = {
     const res = await api.get(`/alerts/${id}`);
     return res.data;
   },
+  explain: async (id: string): Promise<AttackExplanation> => {
+    const res = await api.post(`/alerts/${id}/explanation`);
+    return res.data;
+  },
   getEvents: async (id: string): Promise<unknown[]> => {
     const res = await api.get(`/alerts/${id}/events`);
     return res.data;
